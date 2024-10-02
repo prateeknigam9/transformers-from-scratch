@@ -102,8 +102,8 @@ class MultiHeadAttentionBlock(nn.Module):
     
     def forward(self, q, k, v, mask):
         query = self.w_q(q) # (Batch, seq_len,d_model) --> (Batch, seq_len,d_model)
-        key = self.w_q(q) # (Batch, seq_len,d_model) --> (Batch, seq_len,d_model)
-        value = self.w_q(q) # (Batch, seq_len,d_model) --> (Batch, seq_len,d_model)
+        key = self.w_q(k) # (Batch, seq_len,d_model) --> (Batch, seq_len,d_model)
+        value = self.w_q(v) # (Batch, seq_len,d_model) --> (Batch, seq_len,d_model)
         
         #dividing the vectors
          # (Batch, seq_len,d_model) --> (Batch, seq_len,h,d_k) --> (Batch, h, seq_len, d_k)
