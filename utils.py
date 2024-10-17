@@ -54,6 +54,14 @@ def get_max_len(tokenizer, ds_raw):
             max_length = tokenized_length
     return max_length  
 
+def create_label_mapping(data):
+    class_to_id = {}
+    id_to_class = {}
+    for _,row in data[['label_str','label']].iterrows():
+        class_to_id[row['label_str']] = row['label']
+        id_to_class[row['label']] = row['label_str']
+    return class_to_id,id_to_class
+
 def data_preprocessing(ds):
     prompt = []
     label = []
@@ -89,11 +97,13 @@ def train_one_epoch(model,dataloader,device,optimizer,loss_fn):
         tokenized_prompt = batch[0].to(device)
         actual_label = batch[1].to(device)
         
+        optimizer.zero_grad()
+        
         model_output = model.encode(tokenized_prompt,src_mask=None)
-        model_output = model_output[:, -1, :]
+        # model_output = model_output[:, -1, :]
         predicted_label = torch.argmax(model_output, dim=-1)
         
-        optimizer.zero_grad()
+        
         loss = loss_fn(model_output,actual_label).to(device)
         loss.backward()
         optimizer.step()
@@ -123,7 +133,7 @@ def eval_one_epoch(model, dataloader,device,loss_fn):
             actual_label = batch[1].to(device)
             
             model_output = model.encode(tokenized_prompt,src_mask=None)
-            model_output = model_output[:, -1, :]
+            # model_output = model_output[:, -1, :]
             predicted_label = torch.argmax(model_output, dim=-1)
             loss = loss_fn(model_output,actual_label).to(device)
             losses.append(loss.item())
@@ -142,35 +152,36 @@ def eval_one_epoch(model, dataloader,device,loss_fn):
 def train(model, train_loader, val_loader, epochs, device, optimizer, loss_fn):
     for ep in range(epochs):
         train_loss, train_acc = train_one_epoch(model, train_loader,device,optimizer, loss_fn)
-        print(f'ep {ep}: train_loss={train_loss:.4f}, train_acc={train_acc:.4f}')
         val_loss, val_acc = eval_one_epoch(model, val_loader,device,loss_fn)
+        print(f'ep {ep}: train_loss={train_loss:.4f}, train_acc={train_acc:.4f}')
         print(f'ep {ep}: val_loss={val_loss:.4f}, val_acc={val_acc:.4f}')
 
-def predict_labels(model, tokenizer, prompts, device):
-    model.eval()
-    predictions = []
-    with torch.no_grad():
-        for prompt in prompts:
-            enc_input_tokens = tokenizer.encode(prompt)
-            encoder_input = torch.tensor(enc_input_tokens, dtype=torch.int64).unsqueeze(0).to(device)
-
-            output = model.encode(encoder_input, src_mask = None)
-            output = output[:,-1,:]
-            predicted_class = torch.argmax(output, dim=-1).item()
-            predictions.append(predicted_class)
-    predicted_labels = [tokenizer.decode(pred) for pred in predictions]
-    
-    return predicted_labels
 
 
-def get_sample_prompts_and_labels(model,tokenizer, ds_upd, sample_size,device):
-
-    sampled_data = ds_upd.sample(n=sample_size)
+def predict_on_sample(model,tokenizer,max_seq_len, train_ds, config, id_to_class, data,n):
+    sampled_data = data.sample(n)
     prompts = sampled_data['prompt'].tolist()
     actual_labels = sampled_data['label_str']
-    predicted_data = predict_labels(model, tokenizer, prompts, device)
-    return prompts, actual_labels,predicted_data
-      
+
+    model.eval()
+    with torch.no_grad():
+        for prompt, act_label in zip(prompts, actual_labels):
+            tokenized_prompt = tokenizer.encode(prompt).ids
+            required_pads = max_seq_len - len(tokenized_prompt) +1
+            padded_tokens = torch.cat(
+                [
+                torch.tensor(tokenized_prompt,dtype=torch.int64),
+                torch.tensor([train_ds.pad_token_id] * required_pads,dtype=torch.int64)
+                ]
+                )
+            padded_tokens = torch.tensor(padded_tokens,dtype=torch.int64).to(config["device"])
+            model_output = model.encode(padded_tokens)
+            predicted_class_id = torch.argmax(model_output, dim=-1).item()
+            print("prompt :", prompt)
+            print("act_label :", act_label)
+            print("predicted :", id_to_class[predicted_class_id])
+            print()
+        
 class selfTokenizer():
     def __init__(self, corpus , seperator=" "):
         self.seperator = seperator
@@ -232,9 +243,8 @@ def build_encoder_only_transformer(src_vocab_size, n_classes,
         encoder_blocks.append(enc)
 
     encoder = model_blocks.Encoder(nn.ModuleList(encoder_blocks))
-    transformer = model_blocks.EncoderOnlyTransformer(src_embed, src_pos, encoder,
-                                         n_classes, src_vocab_size,
-                                         embedding_dim)
+    classifier = model_blocks.ClassificationHead(embedding_dim,n_classes)
+    transformer = model_blocks.EncoderOnlyTransformer(src_embed, src_pos, encoder, classifier)
 
     for p in transformer.parameters():
         if p.dim() > 1:

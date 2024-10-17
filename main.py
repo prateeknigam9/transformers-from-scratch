@@ -32,6 +32,8 @@ if __name__ == "__main__":
     train_data, unique_classes = utils.data_preprocessing(train_data)
     val_data, unique_classes = utils.data_preprocessing(val_data)
     
+    class_to_id,id_to_class = utils.create_label_mapping(train_data)
+    
     # tokenizer = tiktoken.get_encoding("gpt2")
     tokenizer = utils.get_or_build_tokenizer(train_data)
     
@@ -46,7 +48,4 @@ if __name__ == "__main__":
     
     model = training_model()
     
-    sample_preds = utils.get_sample_prompts_and_labels(model,tokenizer, val_data, config["sample_size"],config["device"])
-    
-    for prompt, actual, predicted in sample_preds:
-        print(f"Prompt: {prompt}\nActual Label: {actual}\nPredicted Label: {predicted}\n")
+    utils.predict_on_sample(model,tokenizer,max_seq_len, train_ds, config, id_to_class, train_data,n=5)
