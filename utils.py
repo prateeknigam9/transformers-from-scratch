@@ -33,8 +33,8 @@ def get_or_build_tokenizer(ds):
 def load_config():
     return {
         "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-        "n_epochs":10,
-        "train_batch_size":10,
+        "n_epochs":50,
+        "train_batch_size":100,
         "val_batch_size":10,
         "sample_size":5
     }
@@ -167,6 +167,8 @@ def predict_on_sample(model,tokenizer,max_seq_len, train_ds, config, id_to_class
     with torch.no_grad():
         for prompt, act_label in zip(prompts, actual_labels):
             tokenized_prompt = tokenizer.encode(prompt).ids
+
+            
             required_pads = max_seq_len - len(tokenized_prompt) +1
             padded_tokens = torch.cat(
                 [
@@ -214,12 +216,14 @@ class promptDataset(Dataset):
         
         # tokenized_ids = self.tokenizer.encode(prompt,allowed_special="all")
         tokenized_ids = self.tokenizer.encode(prompt).ids
+
+        effective_seq_len = min(len(tokenized_ids),self.max_seq_len)
         
-        required_padding_count = self.max_seq_len - len(tokenized_ids) 
+        required_padding_count = self.max_seq_len - effective_seq_len
         
         padded_prompt_tokens = torch.cat(
             [
-            torch.tensor(tokenized_ids,dtype=torch.int64),
+            torch.tensor(tokenized_ids[:effective_seq_len],dtype=torch.int64),
             torch.tensor([self.pad_token_id] * required_padding_count, dtype=torch.int64)
             ]
         )

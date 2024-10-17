@@ -38,6 +38,7 @@ if __name__ == "__main__":
     tokenizer = utils.get_or_build_tokenizer(train_data)
     
     max_seq_len = utils.get_max_len(tokenizer,train_data) 
+    # max_seq_len = 20 # based on analysis
     print(f"the max seq len: {max_seq_len} \n")  
     
     train_ds = utils.promptDataset(tokenizer,train_data,max_seq_len+1)
@@ -47,5 +48,7 @@ if __name__ == "__main__":
     val_loader = torch.utils.data.DataLoader(val_ds,batch_size=config["val_batch_size"],shuffle=False)
     
     model = training_model()
+
+    torch.save(model, 'model_ep50_bs100.pth')
     
     utils.predict_on_sample(model,tokenizer,max_seq_len, train_ds, config, id_to_class, train_data,n=5)
