@@ -33,8 +33,8 @@ def get_or_build_tokenizer(ds):
 def load_config():
     return {
         "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-        "n_epochs":1,
-        "train_batch_size":1000,
+        "n_epochs":10,
+        "train_batch_size":10,
         "val_batch_size":10,
         "sample_size":5
     }
@@ -77,6 +77,8 @@ def get_model(tokenizer,n_classes,device,max_seq_len):
                                            seq_len=max_seq_len+1)
     return model.to(device)
 
+   
+
 def train_one_epoch(model,dataloader,device,optimizer,loss_fn):
     model.train()
     batch_iterator = tqdm(enumerate(dataloader),total=len(dataloader))
@@ -111,7 +113,9 @@ def train_one_epoch(model,dataloader,device,optimizer,loss_fn):
 
 def eval_one_epoch(model, dataloader,device,loss_fn):
     model.eval()
+    epoch_acc = 0
     losses = []
+    epoch_all_batches = 0
     with torch.no_grad():
         batch_iterator = tqdm(enumerate(dataloader),total=len(dataloader))
         for idx, batch in batch_iterator:
@@ -122,7 +126,7 @@ def eval_one_epoch(model, dataloader,device,loss_fn):
             model_output = model_output[:, -1, :]
             predicted_label = torch.argmax(model_output, dim=-1)
             loss = loss_fn(model_output,actual_label).to(device)
-            losses.append(loss)
+            losses.append(loss.item())
             
             batch_correct = (predicted_label == actual_label).sum().item()
             batch_accuracy = batch_correct/len(actual_label)
@@ -138,8 +142,8 @@ def eval_one_epoch(model, dataloader,device,loss_fn):
 def train(model, train_loader, val_loader, epochs, device, optimizer, loss_fn):
     for ep in range(epochs):
         train_loss, train_acc = train_one_epoch(model, train_loader,device,optimizer, loss_fn)
+        print(f'ep {ep}: train_loss={train_loss:.4f}, train_acc={train_acc:.4f}')
         val_loss, val_acc = eval_one_epoch(model, val_loader,device,loss_fn)
-        print(f'ep {ep}: val_loss={train_loss:.4f}, val_acc={train_acc:.4f}')
         print(f'ep {ep}: val_loss={val_loss:.4f}, val_acc={val_acc:.4f}')
 
 def predict_labels(model, tokenizer, prompts, device):
