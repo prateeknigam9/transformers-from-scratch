@@ -176,30 +176,3 @@ class projection(nn.Module):
     def forward(self, x):
         x = torch.log_softmax(self.output(x), dim=-1)
         
-class ClassificationHead(nn.Module):
-    def __init__(self, embedding_dim:int, num_classes:int):
-        super().__init__()
-        self.classifier_layer = nn.Linear(embedding_dim,num_classes)
-    def forward(self,x):
-        return self.classifier_layer(x)
-        
-class EncoderOnlyTransformer(nn.Module):
-    def __init__(self,
-                 src_embed: InputEmbeddings, pos: PositionalEncoding,
-                 encoder:Encoder, classifier_layer :ClassificationHead):
-        super().__init__()
-        self.src_embed = src_embed
-        self.pos = pos
-        self.encoder = encoder
-        self.classifier_layer = classifier_layer
-                
-    def encode(self,x,src_mask=None):
-        x = self.src_embed(x)
-        x = self.pos(x)
-        x = self.encoder(x, src_mask)
-        x = x[:, 0, :] #(bs, embedded_dim) # First Token
-        # x = x[:, -1, :] #(bs, embedded_dim) # Last Token
-        # x = torch.mean(x,dim=-1) #(bs, embedded_dim) # mean Token
-        x = self.classifier_layer(x)
-        # x = torch.softmax(x,dim=-1) # Compare to check
-        return x
