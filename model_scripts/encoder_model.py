@@ -1,7 +1,6 @@
-import torch
+
 import torch.nn as nn
-import math
-from common_blocks import *
+from model_scripts import common_blocks
 
 
 class ClassificationHead(nn.Module):
@@ -13,8 +12,8 @@ class ClassificationHead(nn.Module):
         
 class EncoderOnlyTransformer(nn.Module):
     def __init__(self,
-                 src_embed: InputEmbeddings, pos: PositionalEncoding,
-                 encoder:Encoder, classifier_layer :ClassificationHead):
+                 src_embed: common_blocks.InputEmbeddings, pos: common_blocks.PositionalEncoding,
+                 encoder:common_blocks.Encoder, classifier_layer :ClassificationHead):
         super().__init__()
         self.src_embed = src_embed
         self.pos = pos
@@ -30,20 +29,25 @@ class EncoderOnlyTransformer(nn.Module):
         return x
     
 def build_encoder_only_transformer(src_vocab_size, n_classes,
-                                   seq_len, embedding_dim=512,
-                                   N =6, h=8, dropout=0.01, d_ff=2048):
+                                   seq_len, config):
 
-    src_embed = InputEmbeddings(src_vocab_size,embedding_dim)
-    src_pos = PositionalEncoding(embedding_dim, seq_len, dropout)
+    embedding_dim = config['model']['embedding_dim']
+    N = config['model']['N']
+    h = config['model']['h']
+    dropout = config['model']['dropout']
+    d_ff = config['model']['d_ff']
+    
+    src_embed = common_blocks.InputEmbeddings(src_vocab_size,embedding_dim)
+    src_pos = common_blocks.PositionalEncoding(embedding_dim, seq_len, dropout)
 
     encoder_blocks = []
     for _ in range(N):
-        self_attention_block = MultiHeadAttention(seq_len, embedding_dim, h, dropout)
-        feed_forward_block = FeedForwardBlock(d_ff,embedding_dim, dropout)
-        enc = encoder_block(self_attention_block,feed_forward_block,dropout)
+        self_attention_block = common_blocks.MultiHeadAttention(seq_len, embedding_dim, h, dropout)
+        feed_forward_block = common_blocks.FeedForwardBlock(d_ff,embedding_dim, dropout)
+        enc = common_blocks.encoder_block(self_attention_block,feed_forward_block,dropout)
         encoder_blocks.append(enc)
 
-    encoder = Encoder(nn.ModuleList(encoder_blocks))
+    encoder = common_blocks.Encoder(nn.ModuleList(encoder_blocks))
     classifier = ClassificationHead(embedding_dim,n_classes)
     transformer = EncoderOnlyTransformer(src_embed, src_pos, encoder, classifier)
 

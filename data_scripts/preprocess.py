@@ -10,7 +10,7 @@ def load_data(path):
         val_data = json.load(file)
     return train_data, val_data
 
-def data_preprocessing(self,ds):
+def data_preprocessing(ds):
     prompt = []
     label = []
     ds_upd = pd.DataFrame()

@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import tqdm
+from tqdm import tqdm
 import numpy as np
 
 def train_one_epoch(model,dataloader,device,optimizer,loss_fn):
