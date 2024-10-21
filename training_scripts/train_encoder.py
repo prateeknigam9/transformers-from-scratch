@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 import numpy as np
+from utils import common_utils
 
 def train_one_epoch(model,dataloader,device,optimizer,loss_fn):
     model.train()
@@ -59,10 +60,16 @@ def eval_one_epoch(model, dataloader,device,loss_fn):
         
     return np.mean(losses), np.mean(accuracies)
 
-def train(model, train_loader, val_loader, epochs, device, optimizer, loss_fn):
+def train(model, train_loader, val_loader, device, optimizer, loss_fn,config):
+    epochs = config["training"]["num_epochs"]
     for ep in range(epochs):
         train_loss, train_acc = train_one_epoch(model, train_loader,device,optimizer, loss_fn)
         val_loss, val_acc = eval_one_epoch(model, val_loader,device,loss_fn)
         print(f'ep {ep}: train_loss={train_loss:.4f}, train_acc={train_acc:.4f}')
         print(f'ep {ep}: val_loss={val_loss:.4f}, val_acc={val_acc:.4f}')
         
+        #Saving checkpoints        
+        if ep % 2 == 0:
+            checkpoints = {'state_dict':model.state_dict(), 'optimizer': optimizer.state_dict()}
+            common_utils.save_checkpoints(checkpoints, filename = config['training']['checkpoint'])
+            
