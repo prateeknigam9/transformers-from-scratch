@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 import numpy as np
+from utils import common_utils
 
 def train_one_epoch(model,dataloader,device,optimizer,loss_fn):
     model.train()
@@ -66,3 +67,8 @@ def train(model, train_loader, val_loader, epochs, device, optimizer, loss_fn):
         print(f'ep {ep}: train_loss={train_loss:.4f}, train_acc={train_acc:.4f}')
         print(f'ep {ep}: val_loss={val_loss:.4f}, val_acc={val_acc:.4f}')
         
+        #Saving checkpoints        
+        if ep % 2 == 0:
+            checkpoints = {'state_dict':model.state_dict(), 'optimizer': optimizer.state_dict()}
+            common_utils.save_checkpoints(checkpoints, filename = "checkpoint.pth.tar")
+            

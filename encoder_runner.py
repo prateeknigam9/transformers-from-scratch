@@ -15,6 +15,7 @@ import data_scripts
 import utils.dataloader
 import utils.metrics
 import utils.tokenizer_script 
+import utils.common_utils
 
 def load_config(config_path):
     with open(config_path, 'r') as file:
@@ -56,6 +57,10 @@ def train_encoder(device):
     
     optimizer = torch.optim.Adam(model.parameters(), lr=config["training"]['lr'],eps= config["training"]['eps'])
     loss_fn = nn.CrossEntropyLoss()
+    
+    if config['training']['load_from_checkpoint']:
+        utils.common_utils.load_checkpoints(torch.load(config['training']['checkpoint']),model,optimizer)
+        
     training_scripts.train_encoder.train(model, train_loader, val_loader,
                                          config["training"]["num_epochs"], device,
                                          optimizer, loss_fn)
