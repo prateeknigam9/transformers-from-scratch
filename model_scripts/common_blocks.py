@@ -55,7 +55,7 @@ class MultiHeadAttention(nn.Module):
     def attention(key, query, value, mask, dropout:nn.Dropout):
         attention_score = (query @ key.transpose(-2,-1)) * math.sqrt(key.shape[-1])
         if mask is not None:
-            attention_score.masked_fill_(mask==0, 10**-6)
+            attention_score.masked_fill_(mask==0, float('-inf'))
         if dropout is not None:
             attention_score = dropout(attention_score)
         attention_score = torch.softmax(attention_score, dim=-1)
@@ -169,10 +169,5 @@ class Decoder(nn.Module):
             x = layer(x, encoder_output, src_mask, tgt_mask)
         return x 
 
-class projection(nn.Module):
-    def __init__(self, tgt_vocab_size:int, embedding_dim:int):
-        super().__init__()
-        self.output = nn.Linear(embedding_dim, tgt_vocab_size)
-    def forward(self, x):
-        x = torch.log_softmax(self.output(x), dim=-1)
+
         
