@@ -22,10 +22,11 @@ def load_config(config_path):
         return yaml.safe_load(file)
 
 def train_encoder(device):
-# Load configuration
+    # Load configuration
     config = load_config("configs/encoder_config.yaml")
     torch.manual_seed(42)
-# DATA HANDLING
+    
+    # DATA HANDLING
     # loading the data
     data_path = data_scripts.fetch_data.fetch_data("stefanlarson/outofscope-intent-classification-dataset")
     # preprocessing 
@@ -33,9 +34,7 @@ def train_encoder(device):
     train_data, val_data = data_scripts.preprocess.load_data(data_path)
     train_data, unique_classes, class_to_id, id_to_class = data_scripts.preprocess.data_preprocessing(train_data)
     val_data, _, _, _ = data_scripts.preprocess.data_preprocessing(val_data)
-    
-
-    
+        
     # loading tokenizer
     tokenizer = utils.tokenizer_script.get_or_build_tokenizer(train_data)    
     max_seq_len = utils.tokenizer_script.get_max_len(tokenizer,train_data) 
@@ -58,14 +57,25 @@ def train_encoder(device):
     optimizer = torch.optim.Adam(model.parameters(), lr=config["training"]['lr'],eps= config["training"]['eps'])
     loss_fn = nn.CrossEntropyLoss()
     
-    if config['training']['load_from_checkpoint']:
-        utils.common_utils.load_checkpoints(torch.load(config['training']['checkpoint']),model,optimizer)
+    if config['training']['train_or_load'] == 'train':
+        if config['training']['load_from_checkpoint']:
+            utils.common_utils.load_checkpoints(torch.load(config['training']['checkpoint']),model,optimizer)
+            
+        training_scripts.train_encoder.train(model, train_loader, val_loader,
+                                            device,optimizer, loss_fn, config)
         
-    training_scripts.train_encoder.train(model, train_loader, val_loader,
-                                         config["training"]["num_epochs"], device,
-                                         optimizer, loss_fn)
+        # torch.save(model, f'{config['meta_data']['model_name']}.pth')
+        model_state = {'state_dict':model.state_dict(), 'optimizer': optimizer.state_dict()}            
+        utils.common_utils.save_checkpoints(model_state, filename = config['training']['model_saved_at'])
+        
     
-    torch.save(model, f'{config['meta_data']['model_name']}.pth')
+    if config['training']['train_or_load'] == 'load':
+        model_path = config['training']['model_saved_at']
+        if os.path.exists(model_path):
+            utils.common_utils.load_checkpoints(torch.load(model_path),model,optimizer)
+        else:
+            raise FileNotFoundError("model file not found")
+            
     
     utils.metrics.predict_on_sample(model,tokenizer,max_seq_len,
                                     train_ds, id_to_class, train_data,device,n=5)

@@ -60,7 +60,8 @@ def eval_one_epoch(model, dataloader,device,loss_fn):
         
     return np.mean(losses), np.mean(accuracies)
 
-def train(model, train_loader, val_loader, epochs, device, optimizer, loss_fn):
+def train(model, train_loader, val_loader, device, optimizer, loss_fn,config):
+    epochs = config["training"]["num_epochs"]
     for ep in range(epochs):
         train_loss, train_acc = train_one_epoch(model, train_loader,device,optimizer, loss_fn)
         val_loss, val_acc = eval_one_epoch(model, val_loader,device,loss_fn)
@@ -70,5 +71,5 @@ def train(model, train_loader, val_loader, epochs, device, optimizer, loss_fn):
         #Saving checkpoints        
         if ep % 2 == 0:
             checkpoints = {'state_dict':model.state_dict(), 'optimizer': optimizer.state_dict()}
-            common_utils.save_checkpoints(checkpoints, filename = "checkpoint.pth.tar")
+            common_utils.save_checkpoints(checkpoints, filename = config['training']['checkpoint'])
             

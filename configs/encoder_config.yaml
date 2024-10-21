@@ -9,11 +9,11 @@ data:
   train_batch_size: 10
   val_batch_size: 10
 
-
 training:
   train_or_load : 'train' # train to train, load to load
+  model_saved_at : 'saved_models\model_ep50_bs100_mxln20.pth'
   load_from_checkpoint : True
-  checkpoint: "checkpoint.pth.tar"
+  checkpoint: "enc_checkpoint.pth.tar"
   num_epochs: 50  
   lr : 0.0001 
   eps: 1.0e-9
