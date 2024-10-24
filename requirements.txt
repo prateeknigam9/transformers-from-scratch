@@ -1,0 +1,6 @@
+kagglehub
+pandas
+torch
+torchinfo
+tiktoken
+pyyaml
