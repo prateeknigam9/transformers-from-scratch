@@ -4,12 +4,6 @@ from tqdm import tqdm
 import numpy as np
 from utils import common_utils
 
-
-def create_mask(seq_len):
-    # Create a mask of shape (seq_len, seq_len) where upper triangular part is 0 (masked)
-    mask = torch.triu(torch.ones(seq_len, seq_len), diagonal=1).to(torch.bool)
-    return mask
-
 def train_one_epoch(model,dataloader,device,optimizer,loss_fn):
     model.train()
     batch_iterator = tqdm(enumerate(dataloader),total=len(dataloader))
@@ -17,27 +11,23 @@ def train_one_epoch(model,dataloader,device,optimizer,loss_fn):
     accuracies = []
     for idx, batch in batch_iterator:
         tokenized_prompt = batch[0].to(device)
-        actual_label = batch[1].to(device)
+        tokenized_target = batch[1].to(device)
+        
+        last_token_targets = tokenized_target[:,-1]
         
         optimizer.zero_grad()
         
-        # Create mask
-        seq_len = tokenized_prompt.size(1)
-        tgt_mask = create_mask(seq_len).to(device)
-        
-        # model_output = model.decode(tokenized_prompt,src_mask=None)
-        model_output = model.decode(tokenized_prompt, src_mask=None, tgt_mask=tgt_mask)
-        
-        # model_output = model_output[:, -1, :]
-        loss = loss_fn(model_output.view(-1, model_output.size(-1)), actual_label.view(-1))  # Flatten for CrossEntropy
-        predicted_label = torch.argmax(model_output, dim=-1)
+        logits = model(tokenized_prompt,mask=True)
+        last_token_logits = logits[:, -1, :]
+                
+        loss = loss_fn(last_token_logits,last_token_targets).to(device)
         loss.backward()
-        optimizer.step()
-        
+        optimizer.step()        
         losses.append(loss.item())
-
-        batch_correct = (predicted_label == actual_label).sum().item()
-        batch_accuracy = batch_correct/len(actual_label)
+        
+        predicted_indices = torch.argmax(last_token_logits, dim=-1)
+        batch_correct = (predicted_indices == last_token_targets).sum().item()        
+        batch_accuracy = batch_correct/len(tokenized_target)
         accuracies.append(batch_accuracy)
         
         batch_iterator.set_postfix({"train_loss": f"{loss.item():6.3f}",
@@ -45,34 +35,34 @@ def train_one_epoch(model,dataloader,device,optimizer,loss_fn):
     
     return np.mean(losses), np.mean(accuracies)
 
+
 def eval_one_epoch(model, dataloader,device,loss_fn):
     model.eval()
     losses = []
     accuracies = []
     with torch.no_grad():
         batch_iterator = tqdm(enumerate(dataloader),total=len(dataloader))
-        for idx, batch in batch_iterator:
+        for idx, batch in batch_iterator:            
             tokenized_prompt = batch[0].to(device)
-            actual_label = batch[1].to(device)
+            tokenized_target = batch[1].to(device)
             
-            # Create mask
-            seq_len = tokenized_prompt.size(1)
-            tgt_mask = create_mask(seq_len).to(device)
+            last_token_targets = tokenized_target[:,-1]
             
-            model_output = model.decode(tokenized_prompt, encoder_output=None, src_mask=None, tgt_mask=tgt_mask)
-            
-            loss = loss_fn(model_output.view(-1, model_output.size(-1)), actual_label.view(-1))
-            predicted_label = torch.argmax(model_output, dim=-1)
+            logits = model(tokenized_prompt,mask=True)
+            last_token_logits = logits[:, -1, :]
+                    
+            loss = loss_fn(last_token_logits,last_token_targets).to(device)
             losses.append(loss.item())
             
-            batch_correct = (predicted_label == actual_label).sum().item()
-            batch_accuracy = batch_correct/len(actual_label)
+            predicted_indices = torch.argmax(last_token_logits, dim=-1)
+            batch_correct = (predicted_indices == last_token_targets).sum().item()        
+            batch_accuracy = batch_correct/len(tokenized_target)
             accuracies.append(batch_accuracy)
             
-            batch_iterator.set_postfix({"val_loss": f"{loss.item():6.3f}",
-                                        "val_batch_acc": f"{batch_accuracy:.4f}"})
-        
-    return np.mean(losses), np.mean(accuracies)
+            batch_iterator.set_postfix({"train_loss": f"{loss.item():6.3f}",
+                                        "batch_acc": f"{batch_accuracy:.4f}"})
+                   
+        return np.mean(losses), np.mean(accuracies)
 
 def train(model, train_loader, val_loader, device, optimizer, loss_fn,config):
     epochs = config["training"]["num_epochs"]

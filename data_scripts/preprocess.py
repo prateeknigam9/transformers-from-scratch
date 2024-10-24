@@ -28,4 +28,13 @@ def data_preprocessing(ds):
     
     return ds_upd, unique_classes, class_to_id, id_to_class
 
+def load_data_for_decoder(filename):
+    with open(filename,'r',encoding="utf8") as f:
+        # text_data = f.read()
+        lines = f.readlines()
+        
+    return ''.join(lines)
+    # return text_data
+    
+
 

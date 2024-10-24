@@ -4,12 +4,15 @@ import torch
 import torchinfo
 import torch.nn as nn
 
+import tiktoken
+
 import data_scripts.fetch_data
 import data_scripts.preprocess
 import model_scripts
 import model_scripts.decoder_model
 import model_scripts.encoder_model
 import training_scripts
+import training_scripts.train_decoder
 import training_scripts.train_encoder
 import utils
 import data_scripts
@@ -22,36 +25,39 @@ def load_config(config_path):
     with open(config_path, 'r') as file:
         return yaml.safe_load(file)
 
-def train_encoder(device):
+def train_decoder(device):
     # Load configuration
     config = load_config("configs/decoder_config.yaml")
     torch.manual_seed(42)
     
     # DATA HANDLING
     # loading the data
-    data_path = data_scripts.fetch_data.fetch_data("stefanlarson/outofscope-intent-classification-dataset")
-    # preprocessing 
-    train_data, val_data = data_scripts.preprocess.load_data(data_path)
-    train_data, val_data = data_scripts.preprocess.load_data(data_path)
-    train_data, unique_classes, class_to_id, id_to_class = data_scripts.preprocess.data_preprocessing(train_data)
-    val_data, _, _, _ = data_scripts.preprocess.data_preprocessing(val_data)
-        
-    # loading tokenizer
-    tokenizer = utils.tokenizer_script.get_or_build_tokenizer(train_data)    
-    max_seq_len = utils.tokenizer_script.get_max_len(tokenizer,train_data) 
-    print(f"the max seq len: {max_seq_len} \n")  
+    raw_text_book_data = data_scripts.preprocess.load_data_for_decoder('pride_and_prejudice.txt')
     
-    # data loader 
-    train_ds = utils.dataloader.promptDataset(tokenizer,train_data,max_seq_len+1)
-    val_ds = utils.dataloader.promptDataset(tokenizer,val_data,max_seq_len+1)
-    train_loader = torch.utils.data.DataLoader(train_ds,batch_size=config["data"]["train_batch_size"],shuffle=True)
-    val_loader = torch.utils.data.DataLoader(val_ds,batch_size=config["data"]["val_batch_size"],shuffle=False)
+    train_ratio = config["train_test_split"]["ratio"]
+    split_idx = int(train_ratio * len(raw_text_book_data))
+    train_data = raw_text_book_data[:split_idx]
+    validation_data = raw_text_book_data[split_idx:]
     
-    model = model_scripts.decoder_model.build_decoder_only_transformer(
-                                            src_vocab_size=tokenizer.get_vocab_size(),
-                                            tgt_vocab_size=tokenizer.get_vocab_size(),
-                                            seq_len=max_seq_len+1, 
-                                            config = config).to(device)
+    # tokenizer
+    tokenizer = tiktoken.get_encoding('gpt2')
+    
+    train_loader = utils.dataloader.create_data_loader(train_data,batch_size=config["data"]["train_batch_size"],
+                                                       stride=config["data"]["stride"],
+                                                       max_length=config["data"]["max_length"],
+                                                       shuffle=True, drop_last=True)
+    val_loader = utils.dataloader.create_data_loader(validation_data,batch_size=config["data"]["val_batch_size"],
+                                                       stride=config["data"]["stride"],
+                                                       max_length=config["data"]["max_length"],
+                                                       shuffle=False, drop_last=False)
+    
+    # setting up the model
+    model = model_scripts.decoder_model.construct_decoder_model(vocab_size=tokenizer.max_token_value+1,
+                                                                d_model = config['model']['d_model'],
+                                                                seq_len=config['model']['seq_len'],
+                                                                n_decoder_blocks = config['model']['N'],
+                                                                n_heads = config['model']['h'],
+                                                                dropout=config['model']['dropout'])
     print("\n The Model Summary: \n")
     print(torchinfo.summary(model))
     
@@ -78,9 +84,9 @@ def train_encoder(device):
             raise FileNotFoundError("model file not found")
             
     
-    utils.metrics.predict_on_sample(model,tokenizer,max_seq_len,
-                                    train_ds, id_to_class, train_data,device,n=5)
+    # utils.metrics.predict_on_sample(model,tokenizer,max_seq_len,
+    #                                 train_ds, id_to_class, train_data,device,n=5)
         
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
-    train_encoder(device)
+    train_decoder(device)

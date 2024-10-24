@@ -65,8 +65,8 @@ class MultiHeadAttention(nn.Module):
     
     def forward(self, key, query, value, mask):
         key = self.w_k(key)    
-        query = self.w_k(query)    
-        value = self.w_k(value)    
+        query = self.w_q(query)    
+        value = self.w_v(value)    
         
         # (B, seq_len, embedding_dim) --> (B, seq_len, h, k) --> (B, h, seq_len, k)
         key = key.view(key.shape[0], key.shape[1], self.h, self.d_k).transpose(1,2)        
