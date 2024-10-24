@@ -57,7 +57,7 @@ def train_decoder(device):
                                                                 seq_len=config['model']['seq_len'],
                                                                 n_decoder_blocks = config['model']['N'],
                                                                 n_heads = config['model']['h'],
-                                                                dropout=config['model']['dropout'])
+                                                                dropout=config['model']['dropout']).to(device)
     print("\n The Model Summary: \n")
     print(torchinfo.summary(model))
     

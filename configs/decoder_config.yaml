@@ -1,13 +1,13 @@
 model:
-  d_model : 512
-  N : 6
-  h : 8
+  d_model : 768
+  N : 12
+  h : 12
   dropout : 0.01
-  d_ff : 2048
+  # d_ff : 2048
   seq_len: 256
 
 data:
-  train_batch_size: 10
+  train_batch_size: 30
   val_batch_size: 10
   max_length : 256
   stride : 256

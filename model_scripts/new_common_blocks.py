@@ -29,8 +29,9 @@ class PositionalEncoding(nn.Module):
         pe[:,0::2] = torch.sin(position * div_term)
         pe[:,1::2] = torch.cos(position * div_term)
         
-        self.pe = pe.unsqueeze(0)
-    
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe',pe) # save this tensor
+        
     def forward(self,x):
         x = x + (self.pe[:, :x.shape[1]+1, :]).requires_grad_(False)
         return self.dropout(x)        
@@ -55,9 +56,10 @@ class MultiHeadAttention(nn.Module):
         attention_score = (query @ key.transpose(-2,-1)) * math.sqrt(key.shape[-1])
         if mask:
             # pdb.set_trace()
-            mask = torch.triu(torch.ones(key.shape[-2], key.shape[-2]), diagonal=1)
-            mask_bool = mask.bool()
-            attention_score.masked_fill_(mask_bool, -torch.inf)
+            mask = torch.triu(torch.ones(attention_score.shape[-1], attention_score.shape[-1]), diagonal=1)
+            mask_bool = mask.bool().to(attention_score.device)
+            attention_score.masked_fill_(mask_bool, -1e6)
+            # attention_score.masked_fill_(mask==0, -1e6)
         if dropout:
             attention_score = dropout(attention_score)
         attention_score = torch.softmax(attention_score, dim=-1)        
