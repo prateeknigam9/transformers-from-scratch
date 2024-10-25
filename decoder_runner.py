@@ -83,10 +83,9 @@ def train_decoder(device):
         else:
             raise FileNotFoundError("model file not found")
             
-    
-    # utils.metrics.predict_on_sample(model,tokenizer,max_seq_len,
-    #                                 train_ds, id_to_class, train_data,device,n=5)
-        
+        utils.common_utils.check_model_post_training(tokenizer, 
+                                                 model,max_token_len=6, seq_len=config['model']['seq_len'])
+
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
     train_decoder(device)

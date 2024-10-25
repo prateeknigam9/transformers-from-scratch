@@ -12,7 +12,7 @@ data:
 training:
   train_or_load : 'train' # train to train, load to load
   model_saved_at : 'saved_models/model_ep50_bs100_mxln20.pth'
-  load_from_checkpoint : True
+  load_from_checkpoint : False
   checkpoint: "saved_checkpoints/enc_checkpoint.pth.tar"
   num_epochs: 50  
   lr : 0.0001 

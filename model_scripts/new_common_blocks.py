@@ -9,7 +9,7 @@ class InputEmbeddings(nn.Module):
         self.d_model = d_model
         self.embedding_layer = nn.Embedding(vocab_size,d_model)
     def forward(self, x):
-        return self.embedding_layer(x) * (-math.sqrt(self.d_model))
+        return self.embedding_layer(x) * math.sqrt(self.d_model)
 
 class PositionalEncoding(nn.Module):
     def __init__(self, seq_len:int, d_model:int, dropout:float):
@@ -59,7 +59,6 @@ class MultiHeadAttention(nn.Module):
             mask = torch.triu(torch.ones(attention_score.shape[-1], attention_score.shape[-1]), diagonal=1)
             mask_bool = mask.bool().to(attention_score.device)
             attention_score.masked_fill_(mask_bool, -1e6)
-            # attention_score.masked_fill_(mask==0, -1e6)
         if dropout:
             attention_score = dropout(attention_score)
         attention_score = torch.softmax(attention_score, dim=-1)        
@@ -92,7 +91,7 @@ class LayerNormalization(nn.Module):
     def forward(self, x):
         mean = x.mean(dim=-1, keepdim=True)
         std = x.std(dim=-1, keepdim=True)
-        return self.alpha * (x-mean)/(std + self.eps) + self.beta
+        return (self.alpha * (x-mean)/(std + self.eps)) + self.beta
 
 class GELU(nn.Module):
     def __init__(self):

@@ -77,7 +77,7 @@ def build_encoder_only_transformer(src_vocab_size, n_classes,
     d_ff = config['model']['d_ff']
     
     src_embed = new_common_blocks.InputEmbeddings(src_vocab_size,embedding_dim)
-    src_pos = new_common_blocks.PositionalEncoding(embedding_dim, seq_len, dropout)
+    src_pos = new_common_blocks.PositionalEncoding(seq_len=seq_len,d_model=embedding_dim,dropout=dropout)
 
     encoder_blocks = []
     for _ in range(N):
